@@ -1,0 +1,50 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: node-k8s-app
+  name: node-k8s-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: node-k8s-app
+  template:
+    metadata:
+      labels:
+        app: node-k8s-app
+    spec:
+      containers:
+      - image: docker.io/yogendra/node-k8s-app:latest
+        name: node-k8s-app
+        imagePullPolicy: IfNotPresent 
+        ports:
+        - containerPort: 3000
+          name: http
+        - containerPort: 3001
+          name: probe-port
+        resources: 
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /probes/liveness
+            port: probe-port
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 15
+          timeoutSeconds: 1
+        readinessProbe:
+          httpGet:
+            path: /probes/readiness
+            port: probe-port          
+          failureThreshold: 3
+          initialDelaySeconds: 2
+          periodSeconds: 2
+          timeoutSeconds: 1
+---
