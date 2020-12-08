@@ -26,10 +26,10 @@ function demo(){
 function watch-assets(){
   watch \
     kubectl get pod,services -l $APP_LABEL -n $NAMESPACE \; \
-    echo "\nApplication Endpoints in Service" \; \
+    echo "=== Application Endpoints in Service" \; \
     kubectl describe service -l $APP_LABEL -n $NAMESPACE \| grep Endpoint \; \
-    echo "\n$FIRST_POD_NAME - All Probe Flags" \; \
-    kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/liveness
+    echo "=== $FIRST_POD_NAME - All Probe Flags" \; \
+    kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes 
 
 }
 
