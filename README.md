@@ -44,31 +44,77 @@ Goals:
     kind create cluster
     ```
 
-2.  (Optional) Install metrics server (Optional)
-    ```
-    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-    ```
-3.  Deploy mongodb
-    1.  Deploy manifest
-        ```
-        kubectl apply -f k8s/mongo-express.yaml
-        ```
-    2.  Create database for the application
-        ```
-        kubectl 
-        ```
-4.  Access MongoDB UI
-    1.  First open a new terminal and then forward local 5000 port to service port 8080
-        ```
-        kubectl port-forward service/mongo-express 5000:8080
-        ```
-    1. Open a browser on http://localhost:5000
-
-5.  Open
-3.  Deploy application
+2.  Deploy application
     ```
     kubectl apply -f k8s/deployment.yaml
     ```
-4.  Monitor pods using krew/tail plugin, octant, kubectl events, etc.
+
+# Demostract Probe Behavior
+
+1.  Launch `demo` shell. This uses tmux. If you don't know tmux, follow steps below:
+
+    ```
+    ./demo
+    ```
+
+    **OR** 
+    
+    Start 3 more ternibal tabs/panes (total 4) in your terminal emulator and run following comands manually:
+
+    1.  Monitor Events
+
+        ```
+        ./demo watch-events
+        ```
+    1.  Tail Logs
+
+        ```
+        ./demo tail-logs
+        ```
+    
+    1.  Monitor pods, service, endpoint and pods probe flags
+
+        ```
+        ./demo monitor-assets
+        ```
+
+1. This will launch a tmux session with split panes
+    
+    ![Demo Shell](demo-shell.png)
+
+    You can use `Ctrl+b d` to exit this at the end.
+    
+1.  In this first you will run commands to cause a breakage and fix in the probes.
+    And other panes will show status, logs, events, etc. 
+
+1.  Lets break liveness probe first
+
+    ```
+    ./demo break liveness
+    ```
+1.  Read through logs, events and probe flags. 
+
+1.  Container should restart immediately on probe failure. 
+
+1.  Lets break liveness probe
+
+    ```
+    ./demo break readiness
+    ```
+
+1.  Read through logs, events and probe flags. 
+
+1.  Container is not restarted. Buy, endpoint is removed from the service
+
+1.  Lets fix readiness probe
+
+    ```
+    ./demo fix readiness
+    ```
+
+1.  Container is marked as ready. Endpoint is added to service
+
+
+    
 
 

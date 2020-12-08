@@ -1,0 +1,54 @@
+#!/bin/bash
+APP_LABEL=app=node-k8s-app
+NAMESPACE=default
+
+SCRIPT_DIR=$(cd `dirname $0`; pwd)
+SCRIPT=$SCRIPT_DIR/$(basename $0)
+
+PROJECT_ROOT=$( cd `dirname $0`/..; pwd)
+
+FIRST_POD_NAME=$(kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[0].metadata.name}")
+
+DEMO_SESSION=probe-test
+
+function driver(){
+  tmux new -s $DEMO_SESSION "$SCRIPT demo" 
+}
+function demo(){
+  tmux \
+      split-window -d "$SCRIPT watch-assets" \; \
+      split-window -d "$SCRIPT tail-logs" \; \
+      split-window -d "$SCRIPT watch-events" \; \
+      split-window -d \; \
+      select-layout even-vertical \; \
+      select-pane -t 1
+}
+function watch-assets(){
+  watch \
+    kubectl get pod,services -l $APP_LABEL -n $NAMESPACE \; \
+    echo "\nApplication Endpoints in Service" \; \
+    kubectl describe service -l $APP_LABEL -n $NAMESPACE \| grep Endpoint \; \
+    echo "\n$FIRST_POD_NAME - All Probe Flags" \; \
+    kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/liveness
+
+}
+
+function break(){
+  TYPE=${1?"Type not given"}
+  kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/break 
+}
+function fix(){
+  TYPE=${1?"Type not given"}
+  kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/fix
+}
+
+function tail-logs(){
+  kubectl logs -f -l $APP_LABEL -n $NAMESPACE
+}
+function watch-events(){
+  kubectl get events -w
+}
+
+
+command=${1:-driver};shift
+$command $*
