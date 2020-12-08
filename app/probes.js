@@ -42,6 +42,9 @@ probes.get('/startup', function(req, res, next) {
   });
 });
 
+probes.get("/", function(req, res, next){  
+  res.json(status);
+});
 
 probes.get("/startup/break", function(req, res, next){
   status.startup = false;
