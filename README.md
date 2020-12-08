@@ -28,14 +28,20 @@ Goals:
         ```
         kind load docker-image $IMAGE_NAME
         ```
-3.  Deploy on kubernetes cluster
+3.  Push image to registry for pulling into the Kubernetes cluster.
+
+    ```
+    docker push $IMAGE_NAME
+    ```
+
+4.  Deploy on kubernetes cluster
     
     *NOTE: Replace `image:` in `k8s/deployment.yaml` with the correct image name*
 
     ```
     kubectl apply -f k8s/deployment.yaml
     ```
-
+    
 
 # Kubernetes Cluster Testing
 
