@@ -3,8 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-
-
+var instance_name=process.env.INSTANCE_NAME || "local"
 var app = express();
 
 app.use(logger('dev'));
@@ -16,15 +15,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 
 app.get("/api/env", function(req,res,next){
-  console.log("api::env");
+  console.log(insance_name + " api::env");
   res.json(process.env);
 });
 app.get("/api/greeting", function(req, res){
-  console.log("api::greeting");
-  var message = "Hellow, World!"
-  var host = process.env.HOSTNAME;
+  
+  console.log(instance_name + " api::greeting");
+  var message = "Hello, World!"  
   var timestamp = new Date();
-  res.json({greeting: message, host: host, timestamp: timestamp});
+  res.json({
+    timestamp: timestamp,
+    instance_name: instance_name, 
+    greeting: message
+  });
 });
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -33,13 +36,10 @@ app.use(function(req, res, next) {
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
+  
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.json(err);
 });
 
 
