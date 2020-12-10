@@ -7,62 +7,97 @@ SCRIPT=$SCRIPT_DIR/$(basename $0)
 
 PROJECT_ROOT=$( cd `dirname $0`/..; pwd)
 
-FIRST_POD_NAME=$(kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[0].metadata.name}")
-SECOND_POD_NAME=$(kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[1].metadata.name}")
 
+IMAGE_NAME=docker.io/yogendra/node-k8s-app:latest
 DEMO_SESSION=probe-test
 
-function driver(){
-  tmux new -s $DEMO_SESSION "$SCRIPT demo" 
+function first-pod {
+  kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[0].metadata.name}"
 }
-function demo(){
-  tmux \
-      split-window -d "$SCRIPT watch-assets" \; \
-      split-window -d "$SCRIPT tail-logs" \; \
-      split-window -d "$SCRIPT watch-events" \; \
-      split-window -d "$SCRIPT watch-api" \; \
-      split-window -d \; \
-      select-layout even-vertical \; \
-      select-pane -t 1
+function second-pod {
+  kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[1].metadata.name}"
 }
-function watch-assets(){
-  watch \
-    kubectl get pod,services -l $APP_LABEL -n $NAMESPACE \; \
-    echo "=== Application Endpoints in Service" \; \
-    kubectl describe service -l $APP_LABEL -n $NAMESPACE \| grep Endpoint \; \
-    echo "=== $FIRST_POD_NAME - All Probe Flags" \; \
-    kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes 
-    echo "=== $SECOND_POD_NAME - All Probe Flags" \; \
-    kubectl exec $SECOND_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes  \
+
+function demo-shell {
+  tmux new-session -s $DEMO_SESSION \; \
+    new-window \; \
+    split-window -df "$SCRIPT api-watch" \; \
+    split-window -dht 2 "$SCRIPT logs-tail" \; \
+    split-window -df "$SCRIPT assets-watch" \; \
+    split-window -dht 4 "$SCRIPT events-watch" 
+}
+
+function assets-watch {
+  FIRST_POD_NAME=$(first-pod)
+  SECOND_POD_NAME=$(second-pod)
+  while true ; do
+    clear
+    $SCRIPT asset-info $FIRST_POD_NAME $SECOND_POD_NAME
+    sleep 2
+    
+  done
+}
+
+function asset-info {
+  FIRST_POD_NAME=$1
+  SECOND_POD_NAME=$2
+  [[ -n $FIRST_POD_NAME ]] || FIRST_POD_NAME=$(first-pod)
+  [[ -n $SECOND_POD_NAME ]] || SECOND_POD_NAME=$(second-pod)
+
+  kubectl get -n $NAMESPACE pod,services -l $APP_LABEL -o wide
+  echo "=== Application Endpoints in Service"
+  kubectl describe -n $NAMESPACE  service -l $APP_LABEL  | grep Endpoint
+  echo "=== $FIRST_POD_NAME - All Probe Flags ===" 
+  kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl -q localhost:3001/probes  | sed 's/true/"✅"/g;s/false/"❌"/g' | jq -c
+  echo "=== $SECOND_POD_NAME - All Probe Flags ===" 
+  kubectl exec $SECOND_POD_NAME -n $NAMESPACE -it -- curl -q localhost:3001/probes  | sed 's/true/"✅"/g;s/false/"❌"/g' | jq -c
 
 }
 
-function watch-api(){
-    kubectl port-forward -n $NAMESPACE service  node-k8s-app 3000:3000 &
+function api-watch {
+    kubectl port-forward -n $NAMESPACE svc/node-k8s-app 3000:80 &> /dev/null &    
     while true;
     do
-      echo $(curl http://localhost:3000/api/greeting)
-      sleep 1
+      curl -q http://localhost:3000/api/greeting  
+      echo
+      sleep 0.5
     done
 }
-function break(){
+function pod-break {
   TYPE=${1?"Type not given"};shift
-  POD_NAME=${1:-$FIRST_POD_NAME}
+  POD_NAME=${1:-`first-pod`}
   kubectl exec $POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/break 
 }
-function fix(){
+function pod-fix {
   TYPE=${1?"Type not given"}; shift
-  POD_NAME=${1:-$FIRST_POD_NAME}
+  POD_NAME=${1:-`first-pod`}
   kubectl exec $POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/fix
 }
 
-function tail-logs(){
-  kubectl logs -f -l $APP_LABEL -n $NAMESPACE
+function logs-tail {
+  kubectl logs -n $NAMESPACE -f -l $APP_LABEL --timestamps --prefix
 }
-function watch-events(){
-  kubectl get events -w
+function events-watch {
+  kubectl get -n $NAMESPACE events -w
 }
 
 
-command=${1:-driver};shift
+function image-build {
+  docker build -t $IMAGE_NAME app
+}
+function image-publish {
+  docker push $IMAGE_NAME
+}
+function image-publish-kind {
+  kind load docker-image $IMAGE_NAME
+}
+
+function k8s-deploy {  
+  kubectl apply -n $NAMESPACE -f k8s/node-k8s-app.yaml
+}
+function k8s-clean {
+  kubectl delete -n $NAMESPACE -f k8s/node-k8s-app.yaml
+}
+
+command=${1:-demo-shell};shift
 $command $*
