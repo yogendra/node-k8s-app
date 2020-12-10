@@ -6,7 +6,7 @@ RUN npm install
 
 COPY . .
 
-USER node
+USER 1000
 
 EXPOSE 3000
 EXPOSE 3001
