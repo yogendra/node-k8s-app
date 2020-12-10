@@ -20,6 +20,11 @@ spec:
       - image: docker.io/yogendra/node-k8s-app:latest
         name: node-k8s-app
         imagePullPolicy: IfNotPresent 
+        env:
+        - name: INSTANCE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         ports:
         - containerPort: 3000
           name: http
