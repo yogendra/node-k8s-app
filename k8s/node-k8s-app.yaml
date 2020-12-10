@@ -72,7 +72,7 @@ metadata:
     app: node-k8s-app
   name: node-k8s-app
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
   - port: 80
     protocol: TCP
