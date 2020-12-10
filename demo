@@ -4,10 +4,7 @@ NAMESPACE=default
 
 SCRIPT_DIR=$(cd `dirname $0`; pwd)
 SCRIPT=$SCRIPT_DIR/$(basename $0)
-
-PROJECT_ROOT=$( cd `dirname $0`/..; pwd)
-
-
+[[ -f $SCRIPT_DIR/.kubeconfig ]] && export KUBECONFIG=$SCRIPT_DIR/.kubeconfig
 IMAGE_NAME=docker.io/yogendra/node-k8s-app:latest
 DEMO_SESSION=probe-test
 
@@ -21,7 +18,7 @@ function second-pod {
 function demo-shell {
   tmux new-session -s $DEMO_SESSION \; \
     new-window \; \
-    split-window -df "$SCRIPT api-watch" \; \
+    split-window -df "$SCRIPT api-watch $enpoint" \; \
     split-window -dht 2 "$SCRIPT logs-tail" \; \
     split-window -df "$SCRIPT assets-watch" \; \
     split-window -dht 4 "$SCRIPT events-watch" 
@@ -32,17 +29,14 @@ function assets-watch {
   SECOND_POD_NAME=$(second-pod)
   while true ; do
     clear
-    $SCRIPT asset-info $FIRST_POD_NAME $SECOND_POD_NAME
+    $SCRIPT assets-info $FIRST_POD_NAME $SECOND_POD_NAME
     sleep 2
-    
   done
 }
 
-function asset-info {
-  FIRST_POD_NAME=$1
-  SECOND_POD_NAME=$2
-  [[ -n $FIRST_POD_NAME ]] || FIRST_POD_NAME=$(first-pod)
-  [[ -n $SECOND_POD_NAME ]] || SECOND_POD_NAME=$(second-pod)
+function assets-info {
+  FIRST_POD_NAME=${1:-$(first-pod)}
+  SECOND_POD_NAME=${2:-$(second-pod)}
 
   kubectl get -n $NAMESPACE pod,services -l $APP_LABEL -o wide
   echo "=== Application Endpoints in Service"
@@ -54,11 +48,22 @@ function asset-info {
 
 }
 
+
 function api-watch {
-    kubectl port-forward -n $NAMESPACE svc/node-k8s-app 3000:80 &> /dev/null &    
+    
+    LB=$(kubectl get service -n $NAMESPACE node-k8s-app -o jsonpath="{.status.loadBalancer.ingress[0].hostname}")
+    URL=http://$LB/api/greeting
+    
+    if [[ -z $LB ]]; then
+      echo forwarding localhost:3000 to service/node-k8s-app:80
+      kubectl port-forward -n $NAMESPACE svc/node-k8s-app 3000:80 &> /dev/null &
+      URL=http://localhost:3000/api/greeting
+    fi
+    echo LB=$LB,URL=$URL
+    echo Watching $URL
     while true;
     do
-      curl -q http://localhost:3000/api/greeting  
+      curl -q $URL
       echo
       sleep 0.5
     done
