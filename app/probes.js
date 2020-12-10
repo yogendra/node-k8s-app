@@ -2,6 +2,8 @@ var express = require('express');
 var logger = require('morgan');
 var status = require('./status');
 
+var instance_name=process.env.INSTANCE_NAME || "local"
+
 var app = express();
 
 app.use(logger('dev'));
@@ -14,7 +16,7 @@ app.use(express.urlencoded({ extended: false }));
 var probes = express.Router();
 
 probes.get('/liveness', function(req, res, next) {
-  console.info("liveness");
+  console.info(instance_name + "liveness");
   status.livenessProbe(function(data){
     res.json(data);
   }, function(errorData){
@@ -24,7 +26,7 @@ probes.get('/liveness', function(req, res, next) {
 });
 
 probes.get('/readiness', function(req, res, next) {
-  console.info("readiness");
+  console.info(instance_name + "readiness");
   status.readinessProbe(function(data){
     res.json(data);
   }, function(errorData){
@@ -33,7 +35,7 @@ probes.get('/readiness', function(req, res, next) {
   });  
 });
 probes.get('/startup', function(req, res, next) {
-  console.info("startup");
+  console.info(instance_name + "startup");
   status.startupProbe(function(data){
     res.json(data);
   }, function(errorData){
