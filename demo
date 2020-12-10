@@ -8,6 +8,7 @@ SCRIPT=$SCRIPT_DIR/$(basename $0)
 PROJECT_ROOT=$( cd `dirname $0`/..; pwd)
 
 FIRST_POD_NAME=$(kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[0].metadata.name}")
+SECOND_POD_NAME=$(kubectl get pod -l app=node-k8s-app -o jsonpath="{.items[1].metadata.name}")
 
 DEMO_SESSION=probe-test
 
@@ -19,6 +20,7 @@ function demo(){
       split-window -d "$SCRIPT watch-assets" \; \
       split-window -d "$SCRIPT tail-logs" \; \
       split-window -d "$SCRIPT watch-events" \; \
+      split-window -d "$SCRIPT watch-api" \; \
       split-window -d \; \
       select-layout even-vertical \; \
       select-pane -t 1
@@ -30,16 +32,28 @@ function watch-assets(){
     kubectl describe service -l $APP_LABEL -n $NAMESPACE \| grep Endpoint \; \
     echo "=== $FIRST_POD_NAME - All Probe Flags" \; \
     kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes 
+    echo "=== $SECOND_POD_NAME - All Probe Flags" \; \
+    kubectl exec $SECOND_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes  \
 
 }
 
+function watch-api(){
+    kubectl port-forward -n $NAMESPACE service  node-k8s-app 3000:3000 &
+    while true;
+    do
+      echo $(curl http://localhost:3000/api/greeting)
+      sleep 1
+    done
+}
 function break(){
-  TYPE=${1?"Type not given"}
-  kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/break 
+  TYPE=${1?"Type not given"};shift
+  POD_NAME=${1:-$FIRST_POD_NAME}
+  kubectl exec $POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/break 
 }
 function fix(){
-  TYPE=${1?"Type not given"}
-  kubectl exec $FIRST_POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/fix
+  TYPE=${1?"Type not given"}; shift
+  POD_NAME=${1:-$FIRST_POD_NAME}
+  kubectl exec $POD_NAME -n $NAMESPACE -it -- curl localhost:3001/probes/$TYPE/fix
 }
 
 function tail-logs(){
