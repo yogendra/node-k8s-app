@@ -20,8 +20,11 @@ app.get("/api/env", function(req,res,next){
   res.json(process.env);
 });
 app.get("/api/greeting", function(req, res){
-console.log("api::greeting");
-  res.json({greeting:"Hello, World!"});
+  console.log("api::greeting");
+  var message = "Hellow, World!"
+  var host = process.env.HOSTNAME;
+  var timestamp = new Date();
+  res.json({greeting: message, host: host, timestamp: timestamp});
 });
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
